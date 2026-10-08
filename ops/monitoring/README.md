@@ -27,3 +27,13 @@ Add `traces = "otlp"` under `[logging]` in the Spindle runtime config, and set t
     OTEL_TRACES_SAMPLER_ARG=0.2
 
 Both need a Spindle restart, so ship them together with a binary deploy.
+
+# Staging (`ops/staging.yaml`, `ops/staging-bench.py`)
+
+Pod `spindle-rehearsal/spindle-staging` on node12 holds a restored copy of the production store, from the S3 cold archive taken at cutover. Federation, push and previews are off, and a NetworkPolicy allows egress only to MAS introspection and DNS. Candidate binaries go in `/target/bin`. Start one with `/target/run.sh /target/bin/<binary>`.
+
+Baseline on 2026-10-08 with `26496c9`:
+- first sliding sync (20-room window) took 59.9s;
+- the widened window returned 0 new rooms (20 of 113: the window bug);
+- a warm repeat took 0.15s;
+- `/health` stayed under 0.01s with no federation load.

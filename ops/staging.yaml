@@ -1,0 +1,43 @@
+# Staging Spindle: a restored copy of the production store, with federation,
+# push and URL previews off. Used to test candidate binaries on real data
+# (large rooms, real accounts) before deploying to reilly.asia.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: spindle-staging-store, namespace: spindle-rehearsal, labels: {spindle.tunaos.org/role: staging}}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 30Gi}}
+---
+# No federation or outbound traffic from staging except to the MAS
+# introspection endpoint (token checks) and DNS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: spindle-staging-egress, namespace: spindle-rehearsal}
+spec:
+  podSelector: {matchLabels: {spindle.tunaos.org/role: staging}}
+  policyTypes: [Egress]
+  egress:
+  - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ess}}, podSelector: {matchLabels: {app.kubernetes.io/name: matrix-authentication-service}}}]
+  - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+    ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+---
+apiVersion: v1
+kind: Pod
+metadata: {name: spindle-staging, namespace: spindle-rehearsal, labels: {spindle.tunaos.org/role: staging, app.kubernetes.io/name: spindle-staging}}
+spec:
+  automountServiceAccountToken: false
+  enableServiceLinks: false
+  restartPolicy: Never
+  nodeSelector: {kubernetes.io/hostname: ip-10-20-1-12}
+  securityContext: {runAsUser: 10091, runAsGroup: 10091, fsGroup: 10091, runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+  containers:
+  - name: staging
+    image: oci.element.io/synapse@sha256:d2215c4a0e0bbd304489af228345b31d6857c1a228175471358d3fda187c0d91
+    command: [sleep, infinity]
+    ports: [{name: http, containerPort: 8008}, {name: metrics, containerPort: 9100}]
+    resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: "2", memory: 8Gi}}
+    securityContext: {readOnlyRootFilesystem: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+    volumeMounts: [{name: store, mountPath: /target}, {name: tmp, mountPath: /tmp}]
+  volumes:
+  - {name: store, persistentVolumeClaim: {claimName: spindle-staging-store}}
+  - {name: tmp, emptyDir: {medium: Memory, sizeLimit: 64Mi}}
