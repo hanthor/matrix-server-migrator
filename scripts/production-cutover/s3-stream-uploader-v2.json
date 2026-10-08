@@ -1,0 +1,130 @@
+{
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": {
+    "name": "spindle-cutover-stream-upload-v2",
+    "namespace": "postgres",
+    "annotations": {
+      "spindle.tunaos.org/script-sha256": "02bac19129ce89b8a14e73f1672e4feb287d748b7d73d454908158ebd8cff46f"
+    }
+  },
+  "spec": {
+    "restartPolicy": "Never",
+    "automountServiceAccountToken": false,
+    "enableServiceLinks": false,
+    "securityContext": {
+      "runAsUser": 10093,
+      "runAsGroup": 10093,
+      "runAsNonRoot": true,
+      "seccompProfile": {
+        "type": "RuntimeDefault"
+      }
+    },
+    "containers": [
+      {
+        "name": "upload",
+        "image": "docker.io/library/python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+        "command": [
+          "sh",
+          "-c",
+          "python3 -m pip install --no-cache-dir --target /tmp/aws-sdk boto3==1.40.76 botocore==1.40.76 > /tmp/install.log 2>&1 && touch /tmp/sdk-ready && sleep 604800"
+        ],
+        "readinessProbe": {
+          "exec": {
+            "command": [
+              "test",
+              "-f",
+              "/tmp/sdk-ready"
+            ]
+          },
+          "periodSeconds": 2
+        },
+        "env": [
+          {
+            "name": "PYTHONPATH",
+            "value": "/tmp/aws-sdk"
+          },
+          {
+            "name": "AWS_DEFAULT_REGION",
+            "value": "eu-north-1"
+          },
+          {
+            "name": "AWS_EC2_METADATA_DISABLED",
+            "value": "true"
+          },
+          {
+            "name": "AWS_ACCESS_KEY_ID",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "postgres-backup-s3",
+                "key": "AWS_ACCESS_KEY_ID"
+              }
+            }
+          },
+          {
+            "name": "AWS_SECRET_ACCESS_KEY",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "postgres-backup-s3",
+                "key": "AWS_SECRET_ACCESS_KEY"
+              }
+            }
+          },
+          {
+            "name": "S3_BUCKET",
+            "valueFrom": {
+              "secretKeyRef": {
+                "name": "postgres-backup-s3",
+                "key": "S3_BUCKET"
+              }
+            }
+          }
+        ],
+        "resources": {
+          "requests": {
+            "cpu": "50m",
+            "memory": "96Mi"
+          },
+          "limits": {
+            "cpu": "500m",
+            "memory": "384Mi"
+          }
+        },
+        "securityContext": {
+          "allowPrivilegeEscalation": false,
+          "readOnlyRootFilesystem": true,
+          "capabilities": {
+            "drop": [
+              "ALL"
+            ]
+          }
+        },
+        "volumeMounts": [
+          {
+            "name": "tmp",
+            "mountPath": "/tmp"
+          },
+          {
+            "name": "script",
+            "mountPath": "/script",
+            "readOnly": true
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "name": "tmp",
+        "emptyDir": {
+          "sizeLimit": "128Mi"
+        }
+      },
+      {
+        "name": "script",
+        "configMap": {
+          "name": "spindle-cutover-stream-script-v2"
+        }
+      }
+    ]
+  }
+}

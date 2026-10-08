@@ -1,0 +1,16 @@
+{
+  "name": "example.org migration",
+  "source": {
+    "kind": "SynapsePostgres",
+    "conn": "host=127.0.0.1 port=5432 user=postgres dbname=synapse",
+    "server_name": "example.org",
+    "media_dir": "/var/lib/synapse/media_store"
+  },
+  "target": {
+    "kind": "SpindleImport",
+    "binary": "/usr/local/bin/spindle",
+    "checkpoint_dir": "/var/lib/migrator"
+  },
+  "only_rooms": [],
+  "preserve_local_history": false
+}

@@ -1,0 +1,10 @@
+{
+  "web_url": "http://127.0.0.1:18509",
+  "login_mode": "password",
+  "allowed_lab_hosts": [],
+  "manifest": "/private/client-witness/manifest.json",
+  "password_file": "/private/client-witness/password",
+  "recovery_key_file": "/private/client-witness/recovery-key",
+  "playwright_module": "/home/ubuntu/.cache/ui-smoke/node_modules/playwright-core",
+  "output": "/private/client-witness/element-run-1"
+}

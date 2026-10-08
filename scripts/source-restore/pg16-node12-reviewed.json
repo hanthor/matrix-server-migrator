@@ -1,0 +1,168 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "source-backup-restore-pg16-node12",
+        "namespace": "spindle-rehearsal",
+        "labels": {
+          "app": "source-backup-restore-pg16-node12"
+        }
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "storageClassName": "local-path",
+        "resources": {
+          "requests": {
+            "storage": "32Gi"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "name": "source-backup-restore-pg16-node12",
+        "namespace": "spindle-rehearsal",
+        "labels": {
+          "app": "source-backup-restore-pg16-node12"
+        },
+        "annotations": {
+          "spindle.tunaos.org/review-status": "Prepared isolated source-restore PG16; root applies only after unused-name/PVC/node-capacity checks"
+        }
+      },
+      "spec": {
+        "nodeSelector": {
+          "kubernetes.io/hostname": "ip-10-20-1-12"
+        },
+        "automountServiceAccountToken": false,
+        "terminationGracePeriodSeconds": 90,
+        "containers": [
+          {
+            "name": "postgres",
+            "image": "docker.io/library/postgres@sha256:1a6ab3f5345eb6dbe04a1349529caabdb0ab09293a09590fad07b2246bfa4b54",
+            "args": [
+              "-c",
+              "listen_addresses=127.0.0.1",
+              "-c",
+              "max_wal_size=2GB"
+            ],
+            "env": [
+              {
+                "name": "POSTGRES_HOST_AUTH_METHOD",
+                "value": "trust"
+              },
+              {
+                "name": "PGDATA",
+                "value": "/var/lib/postgresql/data/pgdata"
+              }
+            ],
+            "resources": {
+              "requests": {
+                "cpu": "500m",
+                "memory": "512Mi"
+              },
+              "limits": {
+                "memory": "2Gi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "pgdata",
+                "mountPath": "/var/lib/postgresql/data"
+              },
+              {
+                "name": "pgsocket",
+                "mountPath": "/var/run/postgresql"
+              },
+              {
+                "name": "tmp",
+                "mountPath": "/tmp"
+              }
+            ],
+            "readinessProbe": {
+              "exec": {
+                "command": [
+                  "pg_isready",
+                  "-U",
+                  "postgres"
+                ]
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 5
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "readOnlyRootFilesystem": true,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "imagePullPolicy": "IfNotPresent"
+          }
+        ],
+        "volumes": [
+          {
+            "name": "pgdata",
+            "persistentVolumeClaim": {
+              "claimName": "source-backup-restore-pg16-node12"
+            }
+          },
+          {
+            "name": "pgsocket",
+            "emptyDir": {
+              "medium": "Memory",
+              "sizeLimit": "16Mi"
+            }
+          },
+          {
+            "name": "tmp",
+            "emptyDir": {
+              "medium": "Memory",
+              "sizeLimit": "64Mi"
+            }
+          }
+        ],
+        "securityContext": {
+          "runAsUser": 999,
+          "runAsGroup": 999,
+          "runAsNonRoot": true,
+          "fsGroup": 999,
+          "fsGroupChangePolicy": "OnRootMismatch",
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "source-backup-restore-pg16-node12",
+        "namespace": "spindle-rehearsal"
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app": "source-backup-restore-pg16-node12"
+          }
+        },
+        "policyTypes": [
+          "Ingress",
+          "Egress"
+        ],
+        "ingress": [],
+        "egress": []
+      }
+    }
+  ]
+}

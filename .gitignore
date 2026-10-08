@@ -1,0 +1,6 @@
+/target/
+/artifacts/
+/scripts/__pycache__/
+*.key
+*.backup
+*.tar.gz

@@ -1,0 +1,12 @@
+{
+  "user_id": "@IMPORTED_USER:reilly.asia",
+  "provenance": "Replace with source client, timestamp, original event IDs, and trusted hash collection method; this example is not evidence",
+  "cross_signing_keys_sha256": "REPLACE_WITH_TRUSTED_SOURCE_CANONICAL_PUBLIC_KEYS_DIGEST",
+  "samples": [
+    {
+      "room_id": "!SOURCE_ROOM:reilly.asia",
+      "event_id": "$SOURCE_EVENT",
+      "body_sha256": "REPLACE_WITH_SHA256_OF_TRUSTED_DECRYPTED_TEXT_BODY"
+    }
+  ]
+}
