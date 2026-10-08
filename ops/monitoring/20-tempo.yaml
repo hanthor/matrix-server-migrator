@@ -1,0 +1,73 @@
+# OpenTelemetry trace backend: Spindle exports spans over OTLP/HTTP when
+# [logging] traces = "otlp" and OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo.monitoring.svc:4318
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: tempo, namespace: monitoring}
+data:
+  tempo.yaml: |
+    server: {http_listen_port: 3200}
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            http: {endpoint: "0.0.0.0:4318"}
+            grpc: {endpoint: "0.0.0.0:4317"}
+    compactor:
+      compaction: {block_retention: 168h}
+    storage:
+      trace:
+        backend: local
+        local: {path: /var/tempo/traces}
+        wal: {path: /var/tempo/wal}
+    metrics_generator:
+      storage:
+        path: /var/tempo/generator
+        remote_write: [{url: "http://victoriametrics.monitoring.svc:8428/api/v1/write"}]
+      processor:
+        service_graphs: {}
+        span_metrics: {}
+    overrides:
+      defaults:
+        metrics_generator: {processors: [service-graphs, span-metrics]}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: tempo-data, namespace: monitoring}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 20Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: tempo, namespace: monitoring}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: tempo}}
+  template:
+    metadata: {labels: {app: tempo}}
+    spec:
+      nodeSelector: {kubernetes.io/hostname: ip-10-20-1-12}
+      securityContext: {runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+      - name: tempo
+        image: grafana/tempo:2.6.1
+        args: [-config.file=/conf/tempo.yaml]
+        ports: [{name: http, containerPort: 3200}, {name: otlp-http, containerPort: 4318}, {name: otlp-grpc, containerPort: 4317}]
+        readinessProbe: {httpGet: {path: /ready, port: http}, initialDelaySeconds: 15}
+        resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {cpu: "1", memory: 2Gi}}
+        securityContext: {readOnlyRootFilesystem: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+        volumeMounts: [{name: data, mountPath: /var/tempo}, {name: conf, mountPath: /conf}]
+      volumes:
+      - {name: data, persistentVolumeClaim: {claimName: tempo-data}}
+      - {name: conf, configMap: {name: tempo}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: tempo, namespace: monitoring}
+spec:
+  selector: {app: tempo}
+  ports:
+  - {name: http, port: 3200, targetPort: http}
+  - {name: otlp-http, port: 4318, targetPort: otlp-http}
+  - {name: otlp-grpc, port: 4317, targetPort: otlp-grpc}
