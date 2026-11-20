@@ -119,7 +119,7 @@ def manifests(out):
         else:
             spec['volumes'].append({'name':'metadata','emptyDir':{'medium':'Memory','sizeLimit':'16Mi'}})
             c['volumeMounts'].append({'name':'metadata','mountPath':'/metadata'})
-            spec['initContainers'].append({'name':'metadata-permissions','image':BASE,'command':['python3','-c',"import os; os.chown('/metadata',10091,10091); os.chmod('/metadata',0o700)"],'securityContext':{'runAsUser':0,'runAsGroup':0,'runAsNonRoot':False,'allowPrivilegeEscalation':False,'readOnlyRootFilesystem':True,'capabilities':{'drop':['ALL'],'add':['CHOWN']}},'volumeMounts':[{'name':'metadata','mountPath':'/metadata'}],'resources':{'requests':{'memory':'16Mi','cpu':'10m'},'limits':{'memory':'64Mi','cpu':'100m'}}})
+            spec['initContainers'].append({'name':'metadata-permissions','image':BASE,'command':['python3','-c',"import os; os.chmod('/metadata',0o700); os.chown('/metadata',10091,10091)"],'securityContext':{'runAsUser':0,'runAsGroup':0,'runAsNonRoot':False,'allowPrivilegeEscalation':False,'readOnlyRootFilesystem':True,'capabilities':{'drop':['ALL'],'add':['CHOWN']}},'volumeMounts':[{'name':'metadata','mountPath':'/metadata'}],'resources':{'requests':{'memory':'16Mi','cpu':'10m'},'limits':{'memory':'64Mi','cpu':'100m'}}})
             # No exporter fsGroup: never recursively rewrite a cold target.
         return {'apiVersion':'v1','kind':'Pod','metadata':{'name':name,'namespace':'ess','labels':{'spindle.tunaos.org/role':'cold-target-proof'}},'spec':spec}
     items=[]
