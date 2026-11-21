@@ -97,6 +97,25 @@ after restarting the dashboard, inspect the checkpoint rather than expecting
 old run IDs to survive. CLI/TUI/web execution paths and the database must be
 accessible from the host running the migrator.
 
+## Development and tests
+
+The workspace is Cargo-based (`Cargo.lock` is committed, edition 2021, no
+pinned minimum Rust version) with four crates under `crates/`. Unit tests live
+in `migrator-core` and `migrator-web`; the operator scripts have a separate
+Python suite that needs only the standard library.
+
+```sh
+cargo test --workspace --locked
+python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+```
+
+Neither suite needs PostgreSQL, Spindle or a Synapse source. Three tests in
+`scripts/tests/test_prepare_pvc_candidate.py` read the private, gitignored
+`artifacts/production-20261006-pvc-fallback-56db7d0/` directory. On a fresh
+clone they fail with `FileNotFoundError` on `identity.json`; that is the
+missing artifact, not a regression, and the other 35 pass. To run one module:
+`python3 -m unittest scripts/tests/test_notification_boundary.py`.
+
 ## Recovery after cutover
 
 The current `56db7d0` production candidate imports joined rooms. The isolated
